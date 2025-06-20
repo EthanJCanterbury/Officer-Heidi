@@ -961,7 +961,7 @@ def run_flask_app():
     print(f"   • POST /webhook/analyze - Analyze repository")
     print(f"   • GET  /webhook/health - Health check")
     print(f"   • GET  /webhook/info - Service information")
-    flask_app.run(host='0.0.0.0', port=5000, debug=True, threaded=True)
+    flask_app.run(host='0.0.0.0', port=5000, debug=False, use_reloader=False, threaded=True)
 
 def run_slack_bot():
     """Run Slack bot"""
