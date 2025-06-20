@@ -1,0 +1,41 @@
+
+{
+  "display_information": {
+    "name": "Officer Heidi",
+    "description": "AI code detection bot that analyzes GitHub repositories for fraud prevention",
+    "background_color": "#2c3e50"
+  },
+  "features": {
+    "bot_user": {
+      "display_name": "Officer Heidi",
+      "always_online": true
+    },
+    "slash_commands": [
+      {
+        "command": "/heidi-check",
+        "description": "Analyze a GitHub repository for AI-generated code",
+        "usage_hint": "[-p] https://github.com/user/repo"
+      }
+    ]
+  },
+  "oauth_config": {
+    "scopes": {
+      "bot": [
+        "commands",
+        "chat:write",
+        "chat:write.public"
+      ]
+    }
+  },
+  "settings": {
+    "event_subscriptions": {
+      "bot_events": []
+    },
+    "interactivity": {
+      "is_enabled": false
+    },
+    "org_deploy_enabled": false,
+    "socket_mode_enabled": true,
+    "token_rotation_enabled": false
+  }
+}
