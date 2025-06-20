@@ -1,0 +1,40 @@
+2025-Jun-20 17:22:41.602568
+Starting deployment of EthanJCanterbury/Officer-Heidi:main to coolify-app-server-a@hetzner.
+2025-Jun-20 17:22:44.767205
+Preparing container with helper image: ghcr.io/coollabsio/coolify-helper:1.0.8.
+2025-Jun-20 17:22:46.412710
+[CMD]: docker stop --time=30 j4wsk8so0kgw0ogsk004o0gk
+2025-Jun-20 17:22:46.412710
+Flag --time has been deprecated, use --timeout instead
+2025-Jun-20 17:22:46.416912
+Error response from daemon: No such container: j4wsk8so0kgw0ogsk004o0gk
+2025-Jun-20 17:22:47.975953
+[CMD]: docker rm -f j4wsk8so0kgw0ogsk004o0gk
+2025-Jun-20 17:22:47.975953
+Error response from daemon: No such container: j4wsk8so0kgw0ogsk004o0gk
+2025-Jun-20 17:22:49.670848
+[CMD]: docker run -d --network coolify --name j4wsk8so0kgw0ogsk004o0gk --rm -v /var/run/docker.sock:/var/run/docker.sock ghcr.io/coollabsio/coolify-helper:1.0.8
+2025-Jun-20 17:22:49.670848
+34a001c8a53ecf284784f9b02e9c7dc324919a9dc3fe695ea5e909b45de8b770
+2025-Jun-20 17:22:54.686650
+[CMD]: docker exec j4wsk8so0kgw0ogsk004o0gk bash -c 'GIT_SSH_COMMAND="ssh -o ConnectTimeout=30 -p 22 -o Port=22 -o LogLevel=ERROR -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null" git ls-remote https://github.com/EthanJCanterbury/Officer-Heidi main'
+2025-Jun-20 17:22:54.686650
+fatal: could not read Username for 'https://github.com': No such device or address
+2025-Jun-20 17:22:54.775827
+Oops something is not okay, are you okay? 😢
+2025-Jun-20 17:22:54.783238
+fatal: could not read Username for 'https://github.com': No such device or address
+2025-Jun-20 17:22:54.791047
+Deployment failed. Removing the new version of your application.
+2025-Jun-20 17:22:56.450129
+Gracefully shutting down build container: j4wsk8so0kgw0ogsk004o0gk
+2025-Jun-20 17:22:58.126133
+[CMD]: docker stop --time=30 j4wsk8so0kgw0ogsk004o0gk
+2025-Jun-20 17:22:58.126133
+Flag --time has been deprecated, use --timeout instead
+2025-Jun-20 17:22:58.405549
+j4wsk8so0kgw0ogsk004o0gk
+2025-Jun-20 17:23:00.045815
+[CMD]: docker rm -f j4wsk8so0kgw0ogsk004o0gk
+2025-Jun-20 17:23:00.045815
+Error response from daemon: No such container: j4wsk8so0kgw0ogsk004o0gk
