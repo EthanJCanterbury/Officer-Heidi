@@ -697,16 +697,30 @@ def analyze_repository_webhook():
     try:
         print(f"📥 Received webhook request: {request.method} {request.url}")
         print(f"📄 Content-Type: {request.content_type}")
-        print(f"📦 Raw data: {request.get_data()}")
+        raw_data = request.get_data()
+        print(f"📦 Raw data: {raw_data}")
+        print(f"📦 Raw data as string: {raw_data.decode('utf-8', errors='ignore')}")
         
-        data = request.get_json()
-        print(f"🔍 Parsed JSON data: {data}")
+        # Try to parse JSON with better error handling
+        try:
+            data = request.get_json(force=True)
+            print(f"🔍 Parsed JSON data: {data}")
+        except Exception as json_error:
+            print(f"❌ JSON parsing error: {json_error}")
+            return jsonify({
+                'error': 'Invalid JSON in request body',
+                'details': str(json_error),
+                'raw_data': raw_data.decode('utf-8', errors='ignore'),
+                'content_type': request.content_type,
+                'status': 'error'
+            }), 400
         
         if not data or 'repo_url' not in data:
             error_msg = 'Missing repo_url in request body'
             print(f"❌ Error: {error_msg}")
             return jsonify({
                 'error': error_msg,
+                'received_data': data,
                 'status': 'error'
             }), 400
         
