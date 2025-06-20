@@ -695,11 +695,18 @@ def heidi_check(ack, respond, command):
 def analyze_repository_webhook():
     """Webhook endpoint for external services to analyze repositories"""
     try:
+        print(f"📥 Received webhook request: {request.method} {request.url}")
+        print(f"📄 Content-Type: {request.content_type}")
+        print(f"📦 Raw data: {request.get_data()}")
+        
         data = request.get_json()
+        print(f"🔍 Parsed JSON data: {data}")
         
         if not data or 'repo_url' not in data:
+            error_msg = 'Missing repo_url in request body'
+            print(f"❌ Error: {error_msg}")
             return jsonify({
-                'error': 'Missing repo_url in request body',
+                'error': error_msg,
                 'status': 'error'
             }), 400
         
@@ -707,8 +714,10 @@ def analyze_repository_webhook():
         
         # Validate GitHub URL
         if not repo_url.startswith('https://github.com/'):
+            error_msg = 'Invalid GitHub repository URL'
+            print(f"❌ Error: {error_msg}")
             return jsonify({
-                'error': 'Invalid GitHub repository URL',
+                'error': error_msg,
                 'status': 'error'
             }), 400
         
@@ -840,17 +849,31 @@ def analyze_repository_webhook():
             return jsonify(response_data), 200
             
         except Exception as e:
+            import traceback
+            error_details = traceback.format_exc()
+            print(f"❌ Analysis failed with error: {str(e)}")
+            print(f"📋 Full traceback:\n{error_details}")
             return jsonify({
                 'error': f'Analysis failed: {str(e)}',
+                'error_details': error_details,
                 'status': 'error'
             }), 500
         finally:
             if temp_dir and os.path.exists(temp_dir):
-                shutil.rmtree(temp_dir)
+                try:
+                    shutil.rmtree(temp_dir)
+                    print(f"🧹 Cleaned up temp directory: {temp_dir}")
+                except Exception as cleanup_error:
+                    print(f"⚠️ Failed to cleanup temp directory: {cleanup_error}")
                 
     except Exception as e:
+        import traceback
+        error_details = traceback.format_exc()
+        print(f"❌ Request processing failed with error: {str(e)}")
+        print(f"📋 Full traceback:\n{error_details}")
         return jsonify({
             'error': f'Request processing failed: {str(e)}',
+            'error_details': error_details,
             'status': 'error'
         }), 500
 
@@ -892,9 +915,53 @@ def service_info():
         }
     }), 200
 
+@flask_app.route('/', methods=['GET'])
+def root():
+    """Root endpoint - redirect to service info"""
+    return jsonify({
+        'message': 'Officer Heidi AI Code Detection Service',
+        'status': 'online',
+        'info_endpoint': '/webhook/info'
+    }), 200
+
+@flask_app.errorhandler(500)
+def internal_error(error):
+    """Handle 500 errors with detailed logging"""
+    import traceback
+    error_details = traceback.format_exc()
+    print(f"🚨 Internal Server Error: {error}")
+    print(f"📋 Full traceback:\n{error_details}")
+    return jsonify({
+        'error': 'Internal Server Error',
+        'details': str(error),
+        'traceback': error_details,
+        'status': 'error'
+    }), 500
+
+@flask_app.errorhandler(404)
+def not_found(error):
+    """Handle 404 errors"""
+    print(f"🔍 404 Not Found: {request.url}")
+    return jsonify({
+        'error': 'Endpoint not found',
+        'available_endpoints': [
+            '/webhook/analyze (POST)',
+            '/webhook/health (GET)',
+            '/webhook/info (GET)',
+            '/ (GET)'
+        ],
+        'status': 'error'
+    }), 404
+
 def run_flask_app():
     """Run Flask webhook server"""
-    flask_app.run(host='0.0.0.0', port=5000, debug=False, threaded=True)
+    print("🌐 Starting Flask webhook server...")
+    print(f"📍 Available endpoints:")
+    print(f"   • GET  / - Service status")
+    print(f"   • POST /webhook/analyze - Analyze repository")
+    print(f"   • GET  /webhook/health - Health check")
+    print(f"   • GET  /webhook/info - Service information")
+    flask_app.run(host='0.0.0.0', port=5000, debug=True, threaded=True)
 
 def run_slack_bot():
     """Run Slack bot"""
