@@ -44,6 +44,19 @@ class GitHubIssueScanner:
         
         return None
     
+    def extract_ysws_from_issue(self, issue_body):
+        """Extract YSWS (Your Submission Was Seen) information from issue body"""
+        if not issue_body:
+            return None
+            
+        # Look for pattern like "YSWS: Waffles" or "YSWS: another name"
+        ysws_pattern = r'YSWS:\s*([^\n\r]+)'
+        match = re.search(ysws_pattern, issue_body, re.IGNORECASE)
+        if match:
+            return match.group(1).strip()
+        
+        return None
+    
     def get_repo_issues(self):
         """Fetch issues from the repository"""
         try:
@@ -194,17 +207,21 @@ class GitHubIssueScanner:
                 except:
                     pass
     
-    def send_analysis_to_slack(self, issue, analysis_result):
+    def send_analysis_to_slack(self, issue, analysis_result, ysws_info=None):
         """Send analysis results to Slack channel"""
         try:
             if not analysis_result:
                 message = f"🚔 *Officer Heidi - Analysis Failed*\n\n"
+                if ysws_info:
+                    message += f"*YSWS:* {ysws_info}\n"
                 message += f"*Issue:* {issue['title']}\n"
                 message += f"*Issue URL:* {issue['html_url']}\n"
                 message += f"❌ Failed to analyze the repository from this issue.\n"
             else:
                 result = analysis_result
                 message = f"🚔 *Officer Heidi - Automated Issue Analysis*\n\n"
+                if ysws_info:
+                    message += f"*YSWS:* {ysws_info}\n"
                 message += f"*Issue:* {issue['title']}\n"
                 message += f"*Issue URL:* {issue['html_url']}\n"
                 message += f"*Repository:* {result['repo_url']}\n"
@@ -274,14 +291,19 @@ class GitHubIssueScanner:
             # Extract repository URL from issue body
             repo_url = self.extract_repo_url_from_issue(issue.get('body', ''))
             
+            # Extract YSWS information from issue body
+            ysws_info = self.extract_ysws_from_issue(issue.get('body', ''))
+            
             if repo_url:
                 print(f"🔗 Found repository URL in issue: {repo_url}")
+                if ysws_info:
+                    print(f"👁️ Found YSWS info: {ysws_info}")
                 
                 # Analyze the repository
                 analysis_result = self.analyze_repo_from_issue(repo_url)
                 
                 # Send results to Slack
-                self.send_analysis_to_slack(issue, analysis_result)
+                self.send_analysis_to_slack(issue, analysis_result, ysws_info)
             else:
                 print(f"❌ No repository URL found in issue: {issue['title']}")
             
