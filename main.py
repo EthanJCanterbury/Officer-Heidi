@@ -302,8 +302,13 @@ class GitHubIssueScanner:
                 # Analyze the repository
                 analysis_result = self.analyze_repo_from_issue(repo_url)
                 
-                # Send results to Slack
-                self.send_analysis_to_slack(issue, analysis_result, ysws_info)
+                # Only send to Slack if AI is detected (Maybe AI, Probly AI, or Definitly AI)
+                if analysis_result and analysis_result['overall_likelihood'] in ["Maybe AI", "Probly AI", "Definitly AI"]:
+                    print(f"🚨 AI DETECTED ({analysis_result['overall_likelihood']}) - Sending to Slack")
+                    self.send_analysis_to_slack(issue, analysis_result, ysws_info)
+                else:
+                    likelihood = analysis_result['overall_likelihood'] if analysis_result else "Analysis Failed"
+                    print(f"✅ No AI detected ({likelihood}) - Skipping Slack notification")
             else:
                 print(f"❌ No repository URL found in issue: {issue['title']}")
             
