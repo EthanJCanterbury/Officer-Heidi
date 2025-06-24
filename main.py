@@ -1070,10 +1070,20 @@ if __name__ == "__main__":
     print("🚔 Officer Heidi is starting up...")
     print("📡 Starting webhook server on port 5000...")
     print("🤖 Starting Slack bot...")
+    print("📊 Starting Airtable monitoring...")
 
     # Start Flask webhook server in a separate thread
     flask_thread = threading.Thread(target=run_flask_app, daemon=True)
     flask_thread.start()
+
+    # Start Airtable monitoring in a separate thread
+    try:
+        from airtable_integration import start_airtable_monitoring
+        airtable_thread = start_airtable_monitoring()
+        print("✅ Airtable monitoring started successfully")
+    except Exception as e:
+        print(f"⚠️ Could not start Airtable monitoring: {e}")
+        print("   Make sure AIRTABLE_API_KEY is set in environment variables")
 
     # Start Slack bot in main thread
     run_slack_bot()
