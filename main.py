@@ -20,327 +20,6 @@ app = App(token=os.environ.get("SLACK_BOT_TOKEN"))
 # Initialize Flask app for webhook
 flask_app = Flask(__name__)
 
-class GitHubIssueScanner:
-    def __init__(self, repo_url, slack_app, target_channel):
-        self.repo_url = repo_url
-        self.slack_app = slack_app
-        self.target_channel = target_channel
-        self.seen_issues = set()
-        self.running = False
-
-    def extract_repo_url_from_issue(self, issue_body):
-        """Extract GitHub repository URL from issue description"""
-        # Look for patterns like "Code URL: https://github.com/username/repo"
-        url_pattern = r'Code URL:\s*(https://github\.com/[^\s\n]+)'
-        match = re.search(url_pattern, issue_body)
-        if match:
-            return match.group(1)
-
-        # Also try to find any GitHub URL in the issue body
-        github_pattern = r'https://github\.com/[^\s\n]+'
-        match = re.search(github_pattern, issue_body)
-        if match:
-            return match.group(1)
-
-        return None
-
-    def extract_ysws_from_issue(self, issue_body):
-        """Extract YSWS (Your Submission Was Seen) information from issue body"""
-        if not issue_body:
-            return None
-
-        # Look for pattern like "YSWS: Waffles" or "YSWS: another name"
-        ysws_pattern = r'YSWS:\s*([^\n\r]+)'
-        match = re.search(ysws_pattern, issue_body, re.IGNORECASE)
-        if match:
-            return match.group(1).strip()
-
-        return None
-
-    def get_repo_issues(self):
-        """Fetch issues from the repository"""
-        try:
-            # Extract owner and repo from URL
-            match = re.search(r'github\.com/([^/]+)/([^/]+)', self.repo_url)
-            if not match:
-                print(f"❌ Invalid repository URL: {self.repo_url}")
-                return []
-
-            owner, repo = match.groups()
-
-            # GitHub API endpoint for issues
-            api_url = f"https://api.github.com/repos/{owner}/{repo}/issues"
-
-            print(f"🔍 Fetching issues from: {api_url}")
-
-            response = requests.get(api_url, params={'state': 'all', 'per_page': 50})
-
-            if response.status_code == 200:
-                issues = response.json()
-                print(f"📋 Found {len(issues)} issues")
-                return issues
-            else:
-                print(f"❌ Failed to fetch issues: {response.status_code}")
-                return []
-
-        except Exception as e:
-            print(f"❌ Error fetching issues: {e}")
-            return []
-
-    def analyze_repo_from_issue(self, repo_url):
-        """Analyze a repository extracted from an issue"""
-        temp_dir = None
-        try:
-            print(f"🔍 Analyzing repository: {repo_url}")
-
-            # Create temporary directory
-            temp_dir = tempfile.mkdtemp()
-
-            # Clone repository
-            repo = clone_repository(repo_url, temp_dir)
-
-            # Get user info
-            user_info = get_github_user_info(repo_url)
-
-            # Analyze commits
-            commits = analyze_commits(repo)
-
-            # Analyze code files
-            analyzer = CodeAnalyzer()
-            total_files = 0
-            total_comments = 0
-            total_code_lines = 0
-            total_ai_score = 0
-            file_results = []
-            language_counts = defaultdict(int)
-            file_contents = []
-
-            for root, dirs, files in os.walk(temp_dir):
-                for file in files:
-                    file_path = os.path.join(root, file)
-                    rel_path = os.path.relpath(file_path, temp_dir)
-
-                    if should_analyze_file(rel_path):
-                        try:
-                            with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
-                                content = f.read()
-
-                            result = analyzer.analyze_file(rel_path, content)
-
-                            # File metadata analysis
-                            metadata_score = analyzer.analyze_file_metadata(rel_path, content)
-                            result['ai_score'] += metadata_score
-                            result['ai_score'] = min(result['ai_score'], 100)
-
-                            # Process all analyzed files, not just those with code_lines > 0
-                            total_files += 1
-                            total_comments += result['comments']
-                            total_code_lines += result['code_lines']
-                            total_ai_score += result['ai_score']
-                            file_results.append((rel_path, result))
-                            file_contents.append(content)
-
-                            # Determine language
-                            language = "Unrecognized"
-                            if rel_path.endswith('.py'):
-                                language = "Python"
-                            elif rel_path.endswith(('.js', '.ts')):
-                                language = "JavaScript/TypeScript"
-                            elif rel_path.endswith('.java'):
-                                language = "Java"
-                            elif rel_path.endswith(('.cpp', '.c', '.h')):
-                                language = "C/C++"
-                            elif rel_path.endswith('.cs'):
-                                language = "C#"
-                            elif rel_path.endswith('.rb'):
-                                language = "Ruby"
-                            elif rel_path.endswith('.go'):
-                                language = "Go"
-                            elif rel_path.endswith('.rs'):
-                                language = "Rust"
-                            elif rel_path.endswith('.php'):
-                                language = "PHP"
-                            elif rel_path.endswith(('.html', '.htm')):
-                                language = "HTML"
-                            elif rel_path.endswith('.css'):
-                                language = "CSS"
-
-                            language_counts[language] += 1
-                        except:
-                            continue
-
-            # Analyze commit patterns
-            commit_pattern_score = analyzer.analyze_commit_patterns(commits)
-            total_ai_score += commit_pattern_score
-
-            # Detect code duplication
-            duplication_score = analyzer.detect_code_duplication(file_contents)
-            total_ai_score += duplication_score
-
-            # Calculate overall metrics
-            if total_files > 0:
-                avg_ai_score = total_ai_score / total_files
-                comment_ratio = (total_comments / total_code_lines * 100) if total_code_lines > 0 else 0
-                overall_likelihood = analyzer.get_ai_likelihood(avg_ai_score)
-            else:
-                avg_ai_score = 0
-                comment_ratio = 0
-                overall_likelihood = "Not AI"
-
-            return {
-                'repo_url': repo_url,
-                'user_info': user_info,
-                'total_files': total_files,
-                'total_code_lines': total_code_lines,
-                'total_comments': total_comments,
-                'comment_ratio': comment_ratio,
-                'language_counts': dict(language_counts),
-                'avg_ai_score': avg_ai_score,
-                'overall_likelihood': overall_likelihood,
-                'commits': commits[:5],  # Last 5 commits
-                'suspicious_files': [(path, result) for path, result in file_results if result['ai_score'] > 30][:5]
-            }
-
-        except Exception as e:
-            print(f"❌ Error analyzing repository {repo_url}: {e}")
-            return None
-        finally:
-            if temp_dir and os.path.exists(temp_dir):
-                try:
-                    shutil.rmtree(temp_dir)
-                except:
-                    pass
-
-    def send_analysis_to_slack(self, issue, analysis_result, ysws_info=None):
-        """Send analysis results to Slack channel"""
-        try:
-            if not analysis_result:
-                message = f"🚔 *Officer Heidi - Analysis Failed*\n\n"
-                if ysws_info:
-                    message += f"*YSWS:* {ysws_info}\n"
-                message += f"*Issue:* {issue['title']}\n"
-                message += f"*Issue URL:* {issue['html_url']}\n"
-                message += f"❌ Failed to analyze the repository from this issue.\n"
-            else:
-                result = analysis_result
-                message = f"🚔 *Officer Heidi - Automated Issue Analysis*\n\n"
-                if ysws_info:
-                    message += f"*YSWS:* {ysws_info}\n"
-                message += f"*Issue:* {issue['title']}\n"
-                message += f"*Issue URL:* {issue['html_url']}\n"
-                message += f"*Repository:* {result['repo_url']}\n"
-                message += f"*Analysis Time:* {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n"
-
-                if result['user_info']:
-                    message += f"*👤 Repository Owner:*\n"
-                    message += f"• Username: {result['user_info']['username']}\n"
-                    message += f"• Account Age: {result['user_info']['account_age_days']} days\n"
-                    if result['user_info']['account_age_days'] < 30:
-                        message += "⚠️ *WARNING: Very new GitHub account (< 30 days)*\n"
-
-                message += f"\n*📊 Code Analysis:*\n"
-                message += f"• Files Analyzed: {result['total_files']}\n"
-                message += f"• Total Code Lines: {result['total_code_lines']}\n"
-                message += f"• Comment Ratio: {result['comment_ratio']:.1f}%\n"
-
-                if result['language_counts']:
-                    message += f"\n*🔤 Languages:*\n"
-                    for lang, count in sorted(result['language_counts'].items()):
-                        message += f"• {lang}: {count} file{'s' if count != 1 else ''}\n"
-
-                message += f"\n*🤖 AI Detection:*\n"
-                message += f"• AI Score: {result['avg_ai_score']:.1f}/100\n"
-
-                # Add color coding based on AI likelihood
-                if result['overall_likelihood'] == "Definitly AI":
-                    message += f"• 🔴 *AI Likelihood: {result['overall_likelihood']}*\n"
-                elif result['overall_likelihood'] == "Probly AI":
-                    message += f"• 🟠 *AI Likelihood: {result['overall_likelihood']}*\n"
-                elif result['overall_likelihood'] == "Maybe AI":
-                    message += f"• 🟡 *AI Likelihood: {result['overall_likelihood']}*\n"
-                else:
-                    message += f"• 🟢 *AI Likelihood: {result['overall_likelihood']}*\n"
-
-                if result['suspicious_files']:
-                    message += f"\n*⚠️ Suspicious Files:*\n"
-                    for path, file_result in result['suspicious_files']:
-                        message += f"• `{path}` - AI Score: {file_result['ai_score']}\n"
-
-            # Send message to Slack channel
-            self.slack_app.client.chat_postMessage(
-                channel=self.target_channel,
-                text=message
-            )
-
-            print(f"✅ Sent analysis to Slack for issue: {issue['title']}")
-
-        except Exception as e:
-            print(f"❌ Error sending message to Slack: {e}")
-
-    def scan_issues(self):
-        """Scan for new issues and analyze repositories"""
-        print(f"🔍 Scanning issues from {self.repo_url}")
-
-        issues = self.get_repo_issues()
-
-        for issue in issues:
-            issue_id = issue['id']
-
-            # Skip if we've already seen this issue
-            if issue_id in self.seen_issues:
-                continue
-
-            print(f"📋 New issue found: {issue['title']} (#{issue['number']})")
-
-            # Extract repository URL from issue body
-            repo_url = self.extract_repo_url_from_issue(issue.get('body', ''))
-
-            # Extract YSWS information from issue body
-            ysws_info = self.extract_ysws_from_issue(issue.get('body', ''))
-
-            if repo_url:
-                print(f"🔗 Found repository URL in issue: {repo_url}")
-                if ysws_info:
-                    print(f"👁️ Found YSWS info: {ysws_info}")
-
-                # Analyze the repository
-                analysis_result = self.analyze_repo_from_issue(repo_url)
-
-                # Only send to Slack if AI is detected (Maybe AI, Probly AI, or Definitly AI)
-                if analysis_result and analysis_result['overall_likelihood'] in ["Maybe AI", "Probly AI", "Definitly AI"]:
-                    print(f"🚨 AI DETECTED ({analysis_result['overall_likelihood']}) - Sending to Slack")
-                    self.send_analysis_to_slack(issue, analysis_result, ysws_info)
-                else:
-                    likelihood = analysis_result['overall_likelihood'] if analysis_result else "Analysis Failed"
-                    print(f"✅ No AI detected ({likelihood}) - Skipping Slack notification")
-            else:
-                print(f"❌ No repository URL found in issue: {issue['title']}")
-
-            # Mark this issue as seen
-            self.seen_issues.add(issue_id)
-
-            print(f"✅ Logged issue #{issue['number']} as seen")
-
-    def start_monitoring(self):
-        """Start the issue monitoring loop"""
-        self.running = True
-        print(f"🚔 Officer Heidi started monitoring issues at {self.repo_url}")
-        print(f"📡 Will send reports to Slack channel: {self.target_channel}")
-
-        while self.running:
-            try:
-                self.scan_issues()
-                print(f"😴 Sleeping for 60 seconds...")
-                time.sleep(60)  # Wait 1 minute before next scan
-            except Exception as e:
-                print(f"❌ Error in monitoring loop: {e}")
-                time.sleep(60)  # Still wait before retrying
-
-    def stop_monitoring(self):
-        """Stop the issue monitoring"""
-        self.running = False
-        print(f"🛑 Stopped monitoring issues")
-
 class CodeAnalyzer:
     def __init__(self):
         self.ai_indicators = [
@@ -428,11 +107,11 @@ class CodeAnalyzer:
         ]
 
         self.comment_patterns = [
-            r'#.*',  # Python comments
-            r'//.*',  # Single line comments
-            r'/\*.*?\*/',  # Multi-line comments
-            r'""".*?"""',  # Python docstrings
-            r"'''.*?'''",  # Python docstrings
+            r'^\s*#.*$',  # Python single line comments (full line)
+            r'^\s*//.*$',  # Single line comments (full line)
+            r'^\s*/\*.*?\*/$',  # Single line multi-line comments
+            r'^\s*""".*?"""$',  # Python docstrings (single line)
+            r"^\s*'''.*?'''$",  # Python docstrings (single line)
         ]
 
         self.suspicious_filenames = [
@@ -459,18 +138,92 @@ class CodeAnalyzer:
         code_lines = 0
         ai_score = 0
 
+        in_multiline_comment = False
+        multiline_comment_patterns = [
+            (r'/\*', r'\*/'),  # C-style multiline comments
+            (r'"""', r'"""'),  # Python triple-quote strings
+            (r"'''", r"'''"),  # Python triple-quote strings
+        ]
+
         for line in lines:
+            original_line = line
             line = line.strip()
+
             if not line:
                 continue
 
-            # Check for comments
+            # Handle multiline comments
+            if in_multiline_comment:
+                comment_lines += 1
+                # Check if multiline comment ends on this line
+                for start_pattern, end_pattern in multiline_comment_patterns:
+                    if re.search(end_pattern, line):
+                        in_multiline_comment = False
+                        break
+                continue
+
+            # Check if multiline comment starts
+            for start_pattern, end_pattern in multiline_comment_patterns:
+                if re.search(start_pattern, line):
+                    comment_lines += 1
+                    in_multiline_comment = True
+                    # Check if it also ends on the same line
+                    if re.search(end_pattern, line) and line.find(re.search(start_pattern, line).group()) < line.rfind(re.search(end_pattern, line).group() if re.search(end_pattern, line) else ''):
+                        in_multiline_comment = False
+                    break
+
+            if in_multiline_comment:
+                continue
+
+            # Check for single line comments using original line to preserve indentation
             is_comment = False
             for pattern in self.comment_patterns:
-                if re.search(pattern, line):
+                if re.match(pattern, original_line):
                     comment_lines += 1
                     is_comment = True
                     break
+
+            # Also check for inline comments
+            if not is_comment:
+                # Check for Python inline comments
+                if '#' in line and not line.startswith('#'):
+                    # Make sure it's not in a string
+                    in_string = False
+                    quote_char = None
+                    for i, char in enumerate(line):
+                        if char in ['"', "'"] and (i == 0 or line[i-1] != '\\'):
+                            if not in_string:
+                                in_string = True
+                                quote_char = char
+                            elif char == quote_char:
+                                in_string = False
+                                quote_char = None
+                        elif char == '#' and not in_string:
+                            # This is an inline comment
+                            code_part = line[:i].strip()
+                            if code_part:  # There's code before the comment
+                                code_lines += 1
+                            is_comment = True
+                            break
+
+                # Check for JavaScript/C++ inline comments
+                if not is_comment and '//' in line and not line.startswith('//'):
+                    in_string = False
+                    quote_char = None
+                    for i, char in enumerate(line):
+                        if char in ['"', "'"] and (i == 0 or line[i-1] != '\\'):
+                            if not in_string:
+                                in_string = True
+                                quote_char = char
+                            elif char == quote_char:
+                                in_string = False
+                                quote_char = None
+                        elif char == '/' and i < len(line) - 1 and line[i+1] == '/' and not in_string:
+                            code_part = line[:i].strip()
+                            if code_part:  # There's code before the comment
+                                code_lines += 1
+                            is_comment = True
+                            break
 
             if not is_comment and line:
                 code_lines += 1
@@ -1313,29 +1066,14 @@ def run_slack_bot():
     print("🚔 Officer Heidi Slack bot is on duty!")
     handler.start()
 
-def run_issue_monitor():
-    """Run GitHub issue monitoring"""
-    # Configuration for issue monitoring
-    DETECTIVES_REPO_URL = "https://github.com/EthanJCanterbury/detectives"
-    SLACK_CHANNEL = "C091MFX2B5Z"  # Target Slack channel
-
-    # Create and start issue scanner
-    scanner = GitHubIssueScanner(DETECTIVES_REPO_URL, app, SLACK_CHANNEL)
-    scanner.start_monitoring()
-
 if __name__ == "__main__":
     print("🚔 Officer Heidi is starting up...")
     print("📡 Starting webhook server on port 5000...")
     print("🤖 Starting Slack bot...")
-    print("👁️ Starting GitHub issue monitoring...")
 
     # Start Flask webhook server in a separate thread
     flask_thread = threading.Thread(target=run_flask_app, daemon=True)
     flask_thread.start()
-
-    # Start GitHub issue monitoring in a separate thread
-    issue_monitor_thread = threading.Thread(target=run_issue_monitor, daemon=True)
-    issue_monitor_thread.start()
 
     # Start Slack bot in main thread
     run_slack_bot()
