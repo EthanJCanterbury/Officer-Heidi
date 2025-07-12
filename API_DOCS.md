@@ -8,7 +8,7 @@ Officer Heidi is an AI code detection service that analyzes GitHub repositories 
 ## Base URL
 
 ```
-https://your-repl-name.username.repl.co
+https://c404sso4wc08o4wwgks4k0s8.a.selfhosted.hackclub.com/
 ```
 
 ## Authentication
