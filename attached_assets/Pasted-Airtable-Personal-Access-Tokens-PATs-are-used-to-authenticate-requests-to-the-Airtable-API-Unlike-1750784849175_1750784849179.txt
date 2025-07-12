@@ -1,0 +1,137 @@
+Airtable Personal Access Tokens (PATs) are used to authenticate requests to the Airtable API. Unlike legacy API keys (which are now deprecated), PATs are more secure as you can limit their access by defining "scopes" (what actions the token can perform) and "resources" (which bases and workspaces the token can access).
+
+**Important:** Your Personal Access Token acts as your user account within the defined scopes and resources. Keep it secret and never share it publicly.
+
+All requests using a Personal Access Token should be made to the base Airtable API URL:
+
+`https://api.airtable.com/v0/`
+
+You authenticate your requests by including the PAT in the `Authorization` header as a Bearer token:
+
+`Authorization: Bearer YOUR_PERSONAL_ACCESS_TOKEN`
+
+Here's a breakdown of common endpoints you can use, categorized by the type of resource you're interacting with. Remember that the specific endpoints you can access depend entirely on the **scopes** and **bases/workspaces** you granted when creating your Personal Access Token.
+
+---
+
+### Working with Records (Data)
+
+These endpoints are used for reading, creating, updating, and deleting records within your bases.
+
+**Base URL for Record Operations:** `https://api.airtable.com/v0/YOUR_BASE_ID/YOUR_TABLE_ID_OR_NAME`
+
+* **List Records:**
+    * `GET https://api.airtable.com/v0/YOUR_BASE_ID/YOUR_TABLE_ID_OR_NAME`
+    * Used to retrieve a list of records from a specific table. You can add parameters like `view`, `maxRecords`, `pageSize`, `offset`, `sort`, and `filterByFormula` to control the results.
+
+* **Retrieve a Single Record:**
+    * `GET https://api.airtable.com/v0/YOUR_BASE_ID/YOUR_TABLE_ID_OR_NAME/RECORD_ID`
+    * Used to get a specific record by its ID.
+
+* **Create Records:**
+    * `POST https://api.airtable.com/v0/YOUR_BASE_ID/YOUR_TABLE_ID_OR_NAME`
+    * Used to create one or more new records. The request body will contain the `fields` for each new record.
+
+* **Update a Record (Partial Update - PATCH):**
+    * `PATCH https://api.airtable.com/v0/YOUR_BASE_ID/YOUR_TABLE_ID_OR_NAME/RECORD_ID`
+    * Used to update specific fields of an existing record. The request body will contain the `fields` to update.
+
+* **Update Records (Full Update - PUT):
+    * `PUT https://api.airtable.com/v0/YOUR_BASE_ID/YOUR_TABLE_ID_OR_NAME/RECORD_ID`
+    * Used to completely replace an existing record's fields. Any fields not included in the request body will be cleared. (Use with caution!)
+
+* **Delete a Record:**
+    * `DELETE https://api.airtable.com/v0/YOUR_BASE_ID/YOUR_TABLE_ID_OR_NAME/RECORD_ID`
+    * Used to delete a specific record.
+
+---
+
+### Working with Schema (Metadata)
+
+Airtable's Metadata API allows you to programmatically inspect the schema of your bases, including tables, fields, and views.
+
+* **List Bases:**
+    * `GET https://api.airtable.com/v0/meta/bases`
+    * Returns a list of all bases that the token has access to.
+
+* **Retrieve Base Schema:**
+    * `GET https://api.airtable.com/v0/meta/bases/YOUR_BASE_ID/tables`
+    * Returns the schema (tables, fields, views) for a specific base.
+
+* **Update Table Schema (e.g., rename a table):**
+    * `PATCH https://api.airtable.com/v0/meta/bases/YOUR_BASE_ID/tables/YOUR_TABLE_ID`
+    * Requires `schema.bases:write` scope.
+
+* **Create Table:**
+    * `POST https://api.airtable.com/v0/meta/bases/YOUR_BASE_ID/tables`
+    * Requires `schema.bases:write` scope.
+
+* **Delete Table:**
+    * `DELETE https://api.airtable.com/v0/meta/bases/YOUR_BASE_ID/tables/YOUR_TABLE_ID`
+    * Requires `schema.bases:write` scope.
+
+* **Create Field:**
+    * `POST https://api.airtable.com/v0/meta/bases/YOUR_BASE_ID/tables/YOUR_TABLE_ID/fields`
+    * Requires `schema.bases:write` scope.
+
+* **Update Field:**
+    * `PATCH https://api.airtable.com/v0/meta/bases/YOUR_BASE_ID/tables/YOUR_TABLE_ID/fields/YOUR_FIELD_ID`
+    * Requires `schema.bases:write` scope.
+
+* **Delete Field:**
+    * `DELETE https://api.airtable.com/v0/meta/bases/YOUR_BASE_ID/tables/YOUR_TABLE_ID/fields/YOUR_FIELD_ID`
+    * Requires `schema.bases:write` scope.
+
+---
+
+### Working with Webhooks
+
+The Webhooks API allows you to receive real-time notifications about changes in your base.
+
+* **List Webhooks:**
+    * `GET https://api.airtable.com/v0/bases/YOUR_BASE_ID/webhooks`
+    * Requires `webhook:read` scope.
+
+* **Create a Webhook:**
+    * `POST https://api.airtable.com/v0/bases/YOUR_BASE_ID/webhooks`
+    * Requires `webhook:write` scope.
+
+* **Get a Webhook:**
+    * `GET https://api.airtable.com/v0/bases/YOUR_BASE_ID/webhooks/WEBHOOK_ID`
+    * Requires `webhook:read` scope.
+
+* **Refresh a Webhook:**
+    * `POST https://api.airtable.com/v0/bases/YOUR_BASE_ID/webhooks/WEBHOOK_ID/refresh`
+    * Used to re-enable a webhook that might have been disabled due to errors or inactivity. Requires `webhook:write` scope.
+
+* **Delete a Webhook:**
+    * `DELETE https://api.airtable.com/v0/bases/YOUR_BASE_ID/webhooks/WEBHOOK_ID`
+    * Requires `webhook:write` scope.
+
+---
+
+### Enterprise Admin Endpoints (Requires specific Enterprise scopes)
+
+If you are an enterprise admin, additional endpoints are available for managing users, groups, audit logs, and more. These require specific enterprise-level scopes. Examples include:
+
+* **SCIM APIs for user and group management:**
+    * `GET https://api.airtable.com/v0/scim/v2/Users`
+    * `POST https://api.airtable.com/v0/scim/v2/Users`
+    * And other SCIM endpoints for updating, deleting users/groups. Requires `enterprise.scim.usersAndGroups:manage` scope.
+
+* **Audit Log Events:**
+    * `GET https://api.airtable.com/v0/auditlog/events`
+    * Requires `enterprise.auditLog:read` scope.
+
+* **eDiscovery Exports:**
+    * `POST https://api.airtable.com/v0/ediscovery/exports`
+    * Requires `enterprise.eDiscovery:write` scope.
+
+---
+
+**How to find your `YOUR_BASE_ID` and `YOUR_TABLE_ID_OR_NAME`:**
+
+* **YOUR_BASE_ID:** You can find this in the URL when you are viewing your base in Airtable. It usually starts with `app` followed by a string of characters (e.g., `https://airtable.com/appXXXXXXXXXXXXX/tblYYYYYYYYYYY`).
+* **YOUR_TABLE_ID_OR_NAME:** This can be either the table's name (e.g., "Tasks") or the table's ID (which also starts with `tbl` in the URL). Using the table name is often more readable, but the ID is more robust if the table name changes.
+
+Always refer to the official Airtable API documentation for the most up-to-date and complete list of endpoints, required scopes, and request/response formats: [https://airtable.com/developers/web/api](https://airtable.com/developers/web/api)
