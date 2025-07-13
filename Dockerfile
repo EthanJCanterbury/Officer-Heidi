@@ -13,18 +13,13 @@ RUN apt-get update && apt-get install -y \
 # Copy dependency files first
 COPY pyproject.toml ./
 
-# Install uv package manager
-RUN pip install uv
-
-# Create a simple requirements.txt from pyproject.toml for better compatibility
-RUN echo "slack-bolt>=1.18.0" > requirements.txt && \
-    echo "GitPython>=3.1.0" >> requirements.txt && \
-    echo "requests>=2.31.0" >> requirements.txt && \
-    echo "websocket-client>=1.6.0" >> requirements.txt && \
-    echo "flask>=3.1.1" >> requirements.txt
-
-# Install Python dependencies using pip for better compatibility
-RUN pip install -r requirements.txt
+# Install Python dependencies directly from pyproject.toml
+RUN pip install --no-cache-dir \
+    slack-bolt>=1.18.0 \
+    GitPython>=3.1.0 \
+    requests>=2.31.0 \
+    websocket-client>=1.6.0 \
+    flask>=3.1.1
 
 # Copy application code
 COPY . .
@@ -39,6 +34,11 @@ EXPOSE 5000
 # Set environment variables
 ENV PYTHONUNBUFFERED=1
 ENV FLASK_ENV=production
+ENV PYTHONPATH=/app
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:5000/webhook/health || exit 1
 
 # Run the application
 CMD ["python", "main.py"]
