@@ -1,0 +1,108 @@
+2025-Jul-13 01:43:48.120630
+Starting deployment of EthanJCanterbury/Officer-Heidi:main to coolify-app-server-a@hetzner.
+2025-Jul-13 01:43:51.352851
+Preparing container with helper image: ghcr.io/coollabsio/coolify-helper:1.0.8.
+2025-Jul-13 01:44:00.034530
+----------------------------------------
+2025-Jul-13 01:44:00.041526
+Importing EthanJCanterbury/Officer-Heidi:main (commit sha HEAD) to /artifacts/wg0ssckk88sk0ggokkcgkg8c.
+2025-Jul-13 01:44:08.729871
+Image not found (gck0oo088g40sgw84gk0440k:16c9e859afbaf662f9a69b88e0d71515b77a2856). Building new image.
+2025-Jul-13 01:44:24.001112
+----------------------------------------
+2025-Jul-13 01:44:24.008849
+Building docker image started.
+2025-Jul-13 01:44:24.016835
+To check the current progress, click on Show Debug Logs.
+2025-Jul-13 01:44:55.495783
+Building docker image completed.
+2025-Jul-13 01:44:55.510361
+----------------------------------------
+2025-Jul-13 01:44:55.523306
+Rolling update started.
+2025-Jul-13 01:44:57.660377
+New container started.
+2025-Jul-13 01:44:57.674721
+Custom healthcheck found, skipping default healthcheck.
+2025-Jul-13 01:44:57.689680
+Waiting for healthcheck to pass on the new container.
+2025-Jul-13 01:44:57.702786
+Waiting for the start period (5 seconds) before starting healthcheck.
+2025-Jul-13 01:45:06.004792
+Attempt 1 of 3 | Healthcheck status: "starting"
+2025-Jul-13 01:45:06.018475
+Healthcheck logs: /bin/sh: 1: curl: not found
+2025-Jul-13 01:45:06.018475
+| Return code: 1
+2025-Jul-13 01:45:39.347447
+Attempt 2 of 3 | Healthcheck status: "starting"
+2025-Jul-13 01:45:39.367355
+Healthcheck logs: /bin/sh: 1: curl: not found
+2025-Jul-13 01:45:39.367355
+| Return code: 1
+2025-Jul-13 01:46:12.664230
+Attempt 3 of 3 | Healthcheck status: "unhealthy"
+2025-Jul-13 01:46:12.678784
+Healthcheck logs: /bin/sh: 1: curl: not found
+2025-Jul-13 01:46:12.678784
+| Return code: 1
+2025-Jul-13 01:46:12.693618
+----------------------------------------
+2025-Jul-13 01:46:12.707517
+Container logs:
+2025-Jul-13 01:46:14.362714
+[CMD]: docker logs -n 100 gck0oo088g40sgw84gk0440k-014346148637
+2025-Jul-13 01:46:14.362714
+🚔 Officer Heidi is starting up...
+2025-Jul-13 01:46:14.362714
+📡 Starting webhook server on port 5000...
+2025-Jul-13 01:46:14.362714
+🤖 Starting Slack bot...
+2025-Jul-13 01:46:14.362714
+🌐 Starting Flask webhook server...
+2025-Jul-13 01:46:14.362714
+📍 Available endpoints:
+2025-Jul-13 01:46:14.362714
+• GET  / - Service status
+2025-Jul-13 01:46:14.362714
+• POST /webhook/analyze - Analyze repository
+2025-Jul-13 01:46:14.362714
+• GET  /webhook/health - Health check
+2025-Jul-13 01:46:14.362714
+• GET  /webhook/info - Service information
+2025-Jul-13 01:46:14.362714
+🚔 Officer Heidi Slack bot is on duty!
+2025-Jul-13 01:46:14.362714
+* Serving Flask app 'main'
+2025-Jul-13 01:46:14.362714
+* Debug mode: off
+2025-Jul-13 01:46:14.362714
+⚡️ Bolt app is running!
+2025-Jul-13 01:46:14.372589
+* Tip: There are .env files present. Install python-dotenv to use them.
+2025-Jul-13 01:46:14.372589
+WARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.
+2025-Jul-13 01:46:14.372589
+* Running on all addresses (0.0.0.0)
+2025-Jul-13 01:46:14.372589
+* Running on http://127.0.0.1:5000
+2025-Jul-13 01:46:14.372589
+* Running on http://172.18.1.4:5000
+2025-Jul-13 01:46:14.372589
+Press CTRL+C to quit
+2025-Jul-13 01:46:14.382432
+----------------------------------------
+2025-Jul-13 01:46:14.398178
+Removing old containers.
+2025-Jul-13 01:46:14.411976
+----------------------------------------
+2025-Jul-13 01:46:14.424786
+WARNING: Dockerfile or Docker Image based deployment detected. The healthcheck needs a curl or wget command to check the health of the application. Please make sure that it is available in the image or turn off healthcheck on Coolify's UI.
+2025-Jul-13 01:46:14.436247
+----------------------------------------
+2025-Jul-13 01:46:14.448953
+New container is not healthy, rolling back to the old container.
+2025-Jul-13 01:46:48.132200
+Rolling update completed.
+2025-Jul-13 01:46:53.130172
+Gracefully shutting down build container: wg0ssckk88sk0ggokkcgkg8c
